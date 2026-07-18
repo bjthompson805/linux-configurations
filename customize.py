@@ -3,7 +3,7 @@
 
 Walks three tiers of customizations in order:
 
-  1. Suggested          -- bug fixes and changes almost anyone would want
+  1. Recommended        -- bug fixes and changes almost anyone would want
   2. Opinionated        -- changes the author likes, others might not
   3. Highly opinionated -- changes specific to the author's own setup,
                             reviewed only if the user opts in
@@ -110,8 +110,8 @@ def bar_text(label: str, total: int, remaining: int, width: int = 24) -> str:
 
 TIERS = [
     (
-        "suggested",
-        "Suggested",
+        "recommended",
+        "Recommended",
         "These are bug fixes and changes almost anyone on this setup would want.",
     ),
     (
@@ -152,7 +152,7 @@ def run_group(tier_specs, label, status_bar, log):
     """Run one or more tiers as a single progress-bar phase.
 
     Detection runs for every customization in the group up front, so the bar
-    can show an accurate remaining count from the start; suggested +
+    can show an accurate remaining count from the start; recommended +
     opinionated are passed together (they never gate on an opt-in prompt, so
     they read as one phase), highly-opinionated runs alone as its own phase.
     """
@@ -223,7 +223,7 @@ def main():
     log = {"applied": [], "skipped": [], "already": [], "declined": []}
 
     with StatusBar() as status_bar:
-        run_group(TIERS[0:2], "Suggested & Opinionated", status_bar, log)
+        run_group(TIERS[0:2], "Recommended & Opinionated", status_bar, log)
 
         if prompt_yes_no("\nReview highly-opinionated customizations too?"):
             run_group(TIERS[2:3], "Highly opinionated", status_bar, log)

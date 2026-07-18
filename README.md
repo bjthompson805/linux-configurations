@@ -14,7 +14,7 @@ Requires Python 3.10+, nothing else.
 
 Customizations are grouped into three tiers, applied in order:
 
-1. **Suggested** -- bug fixes and changes almost anyone would want. Always
+1. **Recommended** -- bug fixes and changes almost anyone would want. Always
    reviewed.
 2. **Opinionated** -- changes the author likes, others might not. Always
    reviewed.
@@ -31,7 +31,7 @@ original with a `.bak.<timestamp>` suffix.
 ## Advanced
 ### Adding a new customization
 
-Drop a new `.py` file into `customizations/suggested/`,
+Drop a new `.py` file into `customizations/recommended/`,
 `customizations/opinionated/`, or `customizations/highly_opinionated/`
 depending on which tier it belongs to -- the directory it lives in *is* its
 tier, nothing else declares it. The file must define a module-level

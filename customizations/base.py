@@ -2,7 +2,7 @@
 
 A customization lives in customizations/<tier>/<name>.py and exposes a single
 module-level `CUSTOMIZATION` instance of a Customization subclass. Which tier
-it belongs to (suggested / opinionated / highly_opinionated) is implied by
+it belongs to (recommended / opinionated / highly_opinionated) is implied by
 which subpackage the file lives in -- the module itself never states its tier.
 """
 
