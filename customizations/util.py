@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 
 HYPR_DIR = Path.home() / ".config" / "hypr"
+FISH_DIR = Path.home() / ".config" / "fish"
 
 
 def indent(text: str, prefix: str = "  ") -> str:
@@ -79,6 +80,25 @@ def hypr_lua_target() -> Path | None:
     hyprland_lua = HYPR_DIR / "hyprland.lua"
     if hyprland_lua.exists():
         return hyprland_lua
+    return None
+
+
+def fish_user_target() -> Path | None:
+    """Where new fish config should be appended.
+
+    Prefers ~/.config/fish/user.fish: on a Ryoku-managed system it is
+    documented as the file that loads last and is never touched by updates,
+    which makes it the safe place to add or override settings. Falls back to
+    config.fish itself for a plain fish setup with no such convention.
+    """
+    if not FISH_DIR.is_dir():
+        return None
+    user_fish = FISH_DIR / "user.fish"
+    if user_fish.exists():
+        return user_fish
+    config_fish = FISH_DIR / "config.fish"
+    if config_fish.exists():
+        return config_fish
     return None
 
 
