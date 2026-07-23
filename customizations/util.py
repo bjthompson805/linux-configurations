@@ -47,6 +47,44 @@ def hyprctl_int_option(option: str) -> int | None:
         return None
 
 
+def hyprctl_bool_option(option: str) -> bool | None:
+    if not is_hyprland_active():
+        return None
+    try:
+        r = subprocess.run(
+            ["hyprctl", "-j", "getoption", option],
+            capture_output=True, text=True, check=False,
+        )
+    except FileNotFoundError:
+        return None
+    if r.returncode != 0:
+        return None
+    try:
+        return json.loads(r.stdout).get("bool")
+    except ValueError:
+        return None
+
+
+def hyprctl_has_touchpad() -> bool:
+    """Whether hyprctl reports a pointer device whose name looks like a touchpad."""
+    if not is_hyprland_active():
+        return False
+    try:
+        r = subprocess.run(
+            ["hyprctl", "-j", "devices"],
+            capture_output=True, text=True, check=False,
+        )
+    except FileNotFoundError:
+        return False
+    if r.returncode != 0:
+        return False
+    try:
+        data = json.loads(r.stdout)
+    except ValueError:
+        return False
+    return any("touchpad" in m.get("name", "").lower() for m in data.get("mice", []))
+
+
 def hypr_lua_files() -> list[Path]:
     if not HYPR_DIR.is_dir():
         return []
