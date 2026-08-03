@@ -66,26 +66,47 @@ class GreeterHotkeys(Customization):
     def detect(self) -> Detection:
         if not util.is_hyprland_active():
             return Detection(Status.NOT_APPLICABLE, "Hyprland is not installed/running")
-        if shutil.which("thd") is None:
-            return Detection(
-                Status.NOT_APPLICABLE,
-                "triggerhappy is not installed (AUR only: yay -S triggerhappy)",
-            )
         if shutil.which("brightnessctl") is None:
             return Detection(Status.NOT_APPLICABLE, "brightnessctl is not installed (pacman -S brightnessctl)")
         if shutil.which("amixer") is None:
             return Detection(Status.NOT_APPLICABLE, "alsa-utils is not installed (pacman -S alsa-utils)")
 
+        have_triggerhappy = shutil.which("thd") is not None
+        aur_helper = shutil.which("yay") or shutil.which("paru")
+        if not have_triggerhappy and aur_helper is None:
+            return Detection(
+                Status.NOT_APPLICABLE,
+                "triggerhappy isn't installed and no AUR helper (yay/paru) was found to install it",
+            )
+
         missing = [p for p in (GUARD_PATH, OVERRIDE_PATH, BACKLIGHT_PATH, VOLUME_PATH) if not p.exists()]
-        if not missing:
-            return Detection(Status.ALREADY_APPLIED, "guard script, systemd override, and trigger configs are all in place")
+        if have_triggerhappy and not missing:
+            return Detection(
+                Status.ALREADY_APPLIED,
+                "triggerhappy is installed and the guard script, systemd override, and trigger configs are all in place",
+            )
+
+        reasons = []
+        if not have_triggerhappy:
+            reasons.append(f"triggerhappy isn't installed (will build it via {Path(aur_helper).name})")
+        if missing:
+            reasons.append(f"missing: {', '.join(str(p) for p in missing)}")
         return Detection(
             Status.APPLICABLE,
-            f"missing: {', '.join(str(p) for p in missing)}",
-            value=missing,
+            "; ".join(reasons),
+            value=(aur_helper, have_triggerhappy, missing),
         )
 
     def explain(self, detection: Detection) -> str:
+        aur_helper, have_triggerhappy, _missing = detection.value
+        install_note = (
+            f"This first builds and installs triggerhappy from the AUR via "
+            f"`{Path(aur_helper).name} -S triggerhappy` (it's not in the official "
+            "repos) -- expect a small source download/build in addition to the "
+            "sudo prompt below.\n\n"
+            if not have_triggerhappy
+            else ""
+        )
         return (
             f"It appears {detection.reason}. Brightness/volume/mute keys only "
             "work today because Hyprland itself binds them (XF86MonBrightnessUp/"
@@ -98,6 +119,7 @@ class GreeterHotkeys(Customization):
             "with no keybinding daemon) or a bare console, so the same keys "
             "do nothing there -- it's not a permissions problem, nothing is "
             "listening.\n\n"
+            f"{install_note}"
             "This installs a root systemd override for triggerhappy (a "
             "hotkey daemon that reads raw evdev key events independent of "
             "any session) plus trigger configs:\n\n"
@@ -112,12 +134,19 @@ class GreeterHotkeys(Customization):
             "exclusive control there and the two don't double-adjust the "
             "same key press. It only acts at the greeter, a bare console, "
             "or when nothing is logged in.\n\n"
-            "Applying this runs several `sudo` commands (install root files, "
-            "systemctl daemon-reload, enable --now triggerhappy.socket/"
-            "service) -- expect a sudo password prompt."
+            "Applying this runs several `sudo` commands (possibly the AUR "
+            "install, then install root files, systemctl daemon-reload, "
+            "enable --now triggerhappy.socket/service) -- expect a sudo "
+            "password prompt."
         )
 
     def apply(self) -> str:
+        installed_via = None
+        if shutil.which("thd") is None:
+            aur_helper = shutil.which("yay") or shutil.which("paru")
+            subprocess.run([aur_helper, "-S", "--noconfirm", "triggerhappy"], check=True)
+            installed_via = Path(aur_helper).name
+
         _install_root_file(GUARD_SCRIPT, GUARD_PATH, "755")
         _install_root_file(OVERRIDE_CONF, OVERRIDE_PATH, "644")
         _install_root_file(BACKLIGHT_TRIGGER, BACKLIGHT_PATH, "644")
@@ -125,8 +154,10 @@ class GreeterHotkeys(Customization):
         subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
         subprocess.run(["sudo", "systemctl", "enable", "--now", "triggerhappy.socket"], check=True)
         subprocess.run(["sudo", "systemctl", "enable", "--now", "triggerhappy.service"], check=True)
+
+        prefix = f"Installed triggerhappy via {installed_via}, then installed" if installed_via else "Installed"
         return (
-            "Installed thd-guard, the triggerhappy root override, and the "
+            f"{prefix} thd-guard, the triggerhappy root override, and the "
             "backlight/volume trigger configs; enabled triggerhappy.socket "
             "and triggerhappy.service. Log out to the greeter to test the "
             "brightness/volume/mute keys, then log back in and confirm your "
