@@ -33,6 +33,12 @@ class BrightnessKeys(Customization):
     def detect(self) -> Detection:
         if not util.is_hyprland_active():
             return Detection(Status.NOT_APPLICABLE, "Hyprland is not installed/running")
+        if shutil.which("ryoku-shell") is not None:
+            return Detection(
+                Status.NOT_APPLICABLE,
+                "Ryoku's shell already binds these keys itself (with an OSD); "
+                "adding another bind here would double-fire on every keypress",
+            )
         target = util.hypr_lua_target()
         if target is None:
             return Detection(Status.NOT_APPLICABLE, "no Hyprland Lua config found")
