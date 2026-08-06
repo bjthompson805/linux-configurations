@@ -1,8 +1,8 @@
 # linux-configurations
 
-An interactive tool that walks through Hyprland/Arch Linux customizations and
-lets you decide, one at a time, which ones to apply. Each customization
-explains what it does and how it works before asking.
+A terminal UI that walks through Hyprland/Arch Linux customizations one
+screen at a time, so you can see exactly what the tool found and decide
+whether to apply it.
 
 ## Usage
 
@@ -10,23 +10,43 @@ explains what it does and how it works before asking.
 ./customize.py
 ```
 
-Requires Python 3.10+, nothing else.
+Requires Python 3.10+ and a terminal (curses), nothing else.
 
-Customizations are grouped into three tiers, applied in order:
+Customizations are grouped into three tiers, presented in order:
 
-1. **Recommended** -- bug fixes and changes almost anyone would want. Always
-   reviewed.
-2. **Opinionated** -- changes the author likes, others might not. Always
-   reviewed.
+1. **Recommended** -- bug fixes and changes almost anyone would want.
+2. **Opinionated** -- changes the author likes, others might not.
 3. **Highly opinionated** -- changes specific to the author's own setup.
-   Reviewed only if you opt in when prompted.
+
+Each tier starts with its own transition screen naming the tier and what it
+means before showing its customizations. Every customization gets a full
+screen -- including ones that don't apply to your system or are already
+applied -- so it's always clear what the tool checked and decided, not just
+the ones it's asking you to act on.
+
+### Controls
+
+| Key(s)          | Action                                    |
+|-----------------|--------------------------------------------|
+| `→` / `l` / `n` | Next screen                                |
+| `←` / `h` / `p` | Previous screen                            |
+| `↓`/`↑` or `j`/`k` | Scroll long text on the current screen  |
+| `a` / `Enter`   | Apply the customization being shown        |
+| `q`             | Quit                                       |
+
+You can move back and forth freely at any time -- there's no gate before
+highly-opinionated customizations, and nothing is applied without pressing
+`a` on that customization's own screen. Press `q` whenever you're done,
+whether that's partway through or after reaching the end; a report of what
+was applied, already applied, skipped, or not applicable is printed to the
+terminal, and is also its own screen you can page back to before quitting.
 
 For every customization the tool first checks whether it's even relevant to
 your system (e.g. skips laptop-backlight binds if you have no backlight, or
 Ryoku-specific tweaks if Ryoku isn't installed) and whether it's already
-applied. You're only prompted for ones that are relevant and not yet applied.
-Any file a customization edits in place is backed up first, next to the
-original with a `.bak.<timestamp>` suffix.
+applied -- that result is what each screen shows. Any file a customization
+edits in place is backed up first, next to the original with a
+`.bak.<timestamp>` suffix.
 
 ## Advanced
 ### Adding a new customization
