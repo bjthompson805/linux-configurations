@@ -69,7 +69,7 @@ class VimrcLineNumbers(Customization):
             util.backup(VIMRC)
         if text and not text.endswith("\n"):
             text += "\n"
-        text += f"\n# {MARKER}\n" + "\n".join(lines) + "\n"
+        text += f'\n" {MARKER}\n' + "\n".join(lines) + "\n"
         VIMRC.write_text(text)
         return f"Added {', '.join(lines)} to {VIMRC}."
 
