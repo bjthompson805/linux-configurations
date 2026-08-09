@@ -8,6 +8,7 @@ from customizations.base import Customization, Detection, Status
 
 GUARD_PATH = Path("/usr/local/bin/thd-guard")
 OVERRIDE_PATH = Path("/etc/systemd/system/triggerhappy.service.d/override.conf")
+SOCKET_OVERRIDE_PATH = Path("/etc/systemd/system/triggerhappy.socket.d/override.conf")
 BACKLIGHT_PATH = Path("/etc/triggerhappy/triggers.d/backlight.conf")
 VOLUME_PATH = Path("/etc/triggerhappy/triggers.d/volume.conf")
 
@@ -33,6 +34,21 @@ OVERRIDE_CONF = """[Service]
 # the whole process lifetime, not just while opening input devices.
 ExecStart=
 ExecStart=/usr/sbin/thd --triggers /etc/triggerhappy/triggers.d/ --socket /run/thd.socket --deviceglob /dev/input/event*
+"""
+
+SOCKET_OVERRIDE_CONF = """[Socket]
+# Upstream's unit declares ListenStream, but thd/th-cmd's command-socket
+# protocol (used by triggerhappy's own udev rule to hand the daemon newly
+# added/re-added devices, and by th-cmd in general) is hardcoded to
+# AF_UNIX SOCK_DGRAM. A stream socket here means the systemd-activated fd
+# handed to thd doesn't match what clients connect with: th-cmd's
+# connect() silently fails (it never checks the return value), so every
+# hotplug device re-add -- e.g. the ACPI "Video Bus" device SDDM's Xorg
+# tears down and recreates each time its greeter (re)starts -- permanently
+# loses its trigger until the daemon restarts. Clearing and re-declaring
+# as Datagram matches the protocol thd actually speaks.
+ListenStream=
+ListenDatagram=/run/thd.socket
 """
 
 BACKLIGHT_TRIGGER = """KEY_BRIGHTNESSUP\t1\t/usr/local/bin/thd-guard /usr/bin/brightnessctl set 5%+
@@ -79,7 +95,11 @@ class GreeterHotkeys(Customization):
                 "triggerhappy isn't installed and no AUR helper (yay/paru) was found to install it",
             )
 
-        missing = [p for p in (GUARD_PATH, OVERRIDE_PATH, BACKLIGHT_PATH, VOLUME_PATH) if not p.exists()]
+        missing = [
+            p
+            for p in (GUARD_PATH, OVERRIDE_PATH, SOCKET_OVERRIDE_PATH, BACKLIGHT_PATH, VOLUME_PATH)
+            if not p.exists()
+        ]
         if have_triggerhappy and not missing:
             return Detection(
                 Status.ALREADY_APPLIED,
@@ -122,7 +142,14 @@ class GreeterHotkeys(Customization):
             f"{install_note}"
             "This installs a root systemd override for triggerhappy (a "
             "hotkey daemon that reads raw evdev key events independent of "
-            "any session) plus trigger configs:\n\n"
+            "any session) plus trigger configs. It also overrides "
+            "triggerhappy.socket to listen as a datagram socket instead of "
+            "upstream's stream socket -- thd/th-cmd's protocol is hardcoded "
+            "to datagram, so with the stock unit any device that gets "
+            "hotplugged or re-added after the daemon starts (e.g. the ACPI "
+            "\"Video Bus\" device SDDM's own Xorg tears down and recreates "
+            "each time its greeter (re)starts) silently and permanently "
+            "loses its trigger for the rest of the boot:\n\n"
             f"{util.indent(BACKLIGHT_TRIGGER.rstrip())}\n"
             f"{util.indent(VOLUME_TRIGGER.rstrip())}\n\n"
             "Backlight goes through brightnessctl; volume goes through the "
@@ -149,9 +176,15 @@ class GreeterHotkeys(Customization):
 
         _install_root_file(GUARD_SCRIPT, GUARD_PATH, "755")
         _install_root_file(OVERRIDE_CONF, OVERRIDE_PATH, "644")
+        _install_root_file(SOCKET_OVERRIDE_CONF, SOCKET_OVERRIDE_PATH, "644")
         _install_root_file(BACKLIGHT_TRIGGER, BACKLIGHT_PATH, "644")
         _install_root_file(VOLUME_TRIGGER, VOLUME_PATH, "644")
         subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
+        # Stop both first (order matters: the socket unit refuses to
+        # re-bind while its service is still active, e.g. on a rerun of
+        # this customization) so the socket rebinds cleanly with the
+        # datagram override before the service can grab it.
+        subprocess.run(["sudo", "systemctl", "stop", "triggerhappy.service", "triggerhappy.socket"], check=False)
         subprocess.run(["sudo", "systemctl", "enable", "--now", "triggerhappy.socket"], check=True)
         subprocess.run(["sudo", "systemctl", "enable", "--now", "triggerhappy.service"], check=True)
 

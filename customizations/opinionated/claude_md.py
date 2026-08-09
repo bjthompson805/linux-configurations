@@ -41,41 +41,34 @@ class ClaudeMd(Customization):
     title = "Install a pre-written CLAUDE.md with stricter verification/workflow rules"
 
     def explain(self, detection: Detection) -> str:
-        existing = detection.value
-        state = "no ~/.claude/CLAUDE.md exists yet" if existing is None else "~/.claude/CLAUDE.md already exists with different content"
-        overwrite_note = (
-            f"\n\nNote: this replaces the existing file wholesale (it's backed up first) -- "
-            "if you've customized it, review the backup afterwards to fold anything you want to keep back in."
-            if existing is not None
-            else ""
-        )
         return (
-            f"It appears {state}. This installs a pre-written CLAUDE.md of "
-            "personal working-agreement rules for Claude Code: don't guess "
-            "at system config, verify by reading actual files/running "
-            "commands, sanity-check JSONC/CSS before finishing, revert a "
-            "failed change before trying an alternative, go slowly and "
-            "check work before responding, gate patch-system releases on a "
-            "personally-tested build, and never download without asking "
-            "first (tethered/metered connection).\n\n"
+            "It appears no ~/.claude/CLAUDE.md exists yet. This installs a "
+            "pre-written CLAUDE.md of personal working-agreement rules for "
+            "Claude Code: don't guess at system config, verify by reading "
+            "actual files/running commands, sanity-check JSONC/CSS before "
+            "finishing, revert a failed change before trying an "
+            "alternative, go slowly and check work before responding, gate "
+            "patch-system releases on a personally-tested build, and never "
+            "download without asking first (tethered/metered "
+            "connection).\n\n"
             f"{util.indent(CONTENT.rstrip())}"
-            f"{overwrite_note}"
         )
 
     def detect(self) -> Detection:
         if shutil.which("claude") is None and not CLAUDE_DIR.exists():
             return Detection(Status.NOT_APPLICABLE, "Claude Code doesn't appear to be installed (no `claude` on PATH and no ~/.claude directory)")
         if not CLAUDE_MD.exists():
-            return Detection(Status.APPLICABLE, "no ~/.claude/CLAUDE.md found", value=None)
+            return Detection(Status.APPLICABLE, "no ~/.claude/CLAUDE.md found")
         current = CLAUDE_MD.read_text()
         if current == CONTENT:
             return Detection(Status.ALREADY_APPLIED, "~/.claude/CLAUDE.md already matches")
-        return Detection(Status.APPLICABLE, "~/.claude/CLAUDE.md exists but has different content", value=current)
+        return Detection(
+            Status.NOT_APPLICABLE,
+            "~/.claude/CLAUDE.md already exists with different content -- leaving the user's existing file alone",
+        )
 
     def apply(self) -> str:
         CLAUDE_DIR.mkdir(parents=True, exist_ok=True)
-        if CLAUDE_MD.exists():
-            util.backup(CLAUDE_MD)
         CLAUDE_MD.write_text(CONTENT)
         return f"Wrote {CLAUDE_MD}."
 
