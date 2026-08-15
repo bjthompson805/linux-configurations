@@ -124,20 +124,25 @@ def hypr_lua_target() -> Path | None:
 def fish_user_target() -> Path | None:
     """Where new fish config should be appended.
 
-    Prefers ~/.config/fish/user.fish: on a Ryoku-managed system it is
-    documented as the file that loads last and is never touched by updates,
-    which makes it the safe place to add or override settings. Falls back to
-    config.fish itself for a plain fish setup with no such convention.
+    Prefers ~/.config/fish/user.fish: on a Ryoku-managed system config.fish
+    unconditionally sources it last and it's never touched by updates --
+    unlike config.fish itself, which ryoku/shell/deploy.sh overwrites from
+    the repo on every run, silently discarding anything appended there.
+    Whether to prefer user.fish is decided by whether config.fish actually
+    sources it (checked by content), not by whether user.fish already
+    exists -- so the very first customization applied on a fresh Ryoku box
+    (where user.fish doesn't exist yet) still lands in the safe spot instead
+    of the one deploy.sh clobbers. Falls back to config.fish itself for a
+    plain fish setup with no such sourcing convention.
     """
     if not FISH_DIR.is_dir():
         return None
-    user_fish = FISH_DIR / "user.fish"
-    if user_fish.exists():
-        return user_fish
     config_fish = FISH_DIR / "config.fish"
-    if config_fish.exists():
-        return config_fish
-    return None
+    if not config_fish.exists():
+        return None
+    if "user.fish" in config_fish.read_text():
+        return FISH_DIR / "user.fish"
+    return config_fish
 
 
 def append_block(path: Path, block: str, marker: str, comment: str = "#") -> None:
