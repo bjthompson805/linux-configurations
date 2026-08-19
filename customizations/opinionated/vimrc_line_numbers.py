@@ -16,6 +16,12 @@ MARKER = "linux-configurations: line numbers + 4-space tabs"
 
 NUMBER_LINE = "set number"
 TAB_LINES = ["set tabstop=4", "set shiftwidth=4", "set expandtab"]
+DEFAULTS_BLOCK = (
+    "\" linux-configurations: keep vim defaults (syntax highlighting, filetype\n"
+    "\" detection, etc.) that only auto-load when there's no ~/.vimrc\n"
+    "unlet! g:skip_defaults_vim\n"
+    "source $VIMRUNTIME/defaults.vim\n"
+)
 
 
 class VimrcLineNumbers(Customization):
@@ -39,8 +45,18 @@ class VimrcLineNumbers(Customization):
         return bits, lines
 
     def explain(self, detection: Detection) -> str:
-        bits, lines = detection.value
+        bits, lines, creating_fresh = detection.value
         block = "\n".join(lines)
+        extra = ""
+        if creating_fresh:
+            extra = (
+                "\n\nYou don't have a ~/.vimrc yet, so vim currently auto-loads "
+                "$VIMRUNTIME/defaults.vim on its own -- that's what turns on "
+                "syntax highlighting and filetype detection. Creating a "
+                "~/.vimrc, even a minimal one, stops that auto-load, so this "
+                "also adds an explicit `source $VIMRUNTIME/defaults.vim` first "
+                "so you don't lose syntax highlighting."
+            )
         return (
             f"It appears vim is currently missing: {', '.join(bits)}. "
             "This adds:\n\n"
@@ -50,28 +66,41 @@ class VimrcLineNumbers(Customization):
             "tab character, and indent/reindent (<<, >>, autoindent) by 4 "
             "spaces as well, so indentation stays consistent regardless of "
             "how another editor or terminal renders a literal tab."
+            f"{extra}"
         )
 
     def detect(self) -> Detection:
         if shutil.which("vim") is None:
             return Detection(Status.NOT_APPLICABLE, "vim doesn't appear to be installed")
 
-        text = VIMRC.read_text() if VIMRC.exists() else ""
+        existed = VIMRC.exists()
+        text = VIMRC.read_text() if existed else ""
         bits, lines = self._missing(text)
         if not bits:
             return Detection(Status.ALREADY_APPLIED, "line numbers and 4-space tabs are already set")
-        return Detection(Status.APPLICABLE, f"missing: {', '.join(bits)}", value=(bits, lines))
+        return Detection(Status.APPLICABLE, f"missing: {', '.join(bits)}", value=(bits, lines, not existed))
 
     def apply(self) -> str:
-        text = VIMRC.read_text() if VIMRC.exists() else ""
+        existed = VIMRC.exists()
+        text = VIMRC.read_text() if existed else ""
         _bits, lines = self._missing(text)
-        if VIMRC.exists():
+        if existed:
             util.backup(VIMRC)
         if text and not text.endswith("\n"):
             text += "\n"
+        if not existed:
+            text += DEFAULTS_BLOCK + "\n"
         text += f'\n" {MARKER}\n' + "\n".join(lines) + "\n"
         VIMRC.write_text(text)
-        return f"Added {', '.join(lines)} to {VIMRC}."
+        msg = f"Added {', '.join(lines)} to {VIMRC}."
+        if not existed:
+            msg += (
+                " Also added `source $VIMRUNTIME/defaults.vim` (with "
+                "`unlet! g:skip_defaults_vim`), since creating ~/.vimrc "
+                "disables vim's automatic loading of it -- this keeps syntax "
+                "highlighting and filetype detection working."
+            )
+        return msg
 
 
 CUSTOMIZATION = VimrcLineNumbers()
