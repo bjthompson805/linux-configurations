@@ -33,6 +33,9 @@ This applies to ANY project that keeps its source pristine at upstream and maint
 ## Downloading
 Do not download without first checking with me, as I am always on a tethered connection to my phone, and the data cap is very low.
 
+## Long-running commands
+If a command will take an exceedingly long time to run, ask me first whether I'd rather run it myself in my own terminal, instead of just running it and waiting on it.
+
 """
 
 
@@ -50,7 +53,9 @@ class ClaudeMd(Customization):
             "alternative, go slowly and check work before responding, gate "
             "patch-system releases on a personally-tested build, and never "
             "download without asking first (tethered/metered "
-            "connection).\n\n"
+            "connection), and offer to let me run exceedingly "
+            "long-running commands myself instead of just running "
+            "them.\n\n"
             f"{util.indent(CONTENT.rstrip())}"
         )
 
