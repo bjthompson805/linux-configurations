@@ -32,11 +32,13 @@ class RyokuUnloadLauncherIdle(Customization):
         )
 
     def _load(self) -> dict:
+        if not PERF_JSON.exists():
+            return {}
         return json.loads(PERF_JSON.read_text())
 
     def detect(self) -> Detection:
-        if not PERF_JSON.exists():
-            return Detection(Status.NOT_APPLICABLE, "Ryoku is not installed (no ~/.config/ryoku/performance.json)")
+        if not util.is_ryoku_installed():
+            return Detection(Status.NOT_APPLICABLE, "Ryoku is not installed (no `ryoku` on PATH)")
         try:
             data = self._load()
         except (json.JSONDecodeError, OSError):
@@ -46,9 +48,11 @@ class RyokuUnloadLauncherIdle(Customization):
         return Detection(Status.APPLICABLE, f"{KEY} is currently false")
 
     def apply(self) -> str:
-        util.backup(PERF_JSON)
+        if PERF_JSON.exists():
+            util.backup(PERF_JSON)
         data = self._load()
         data[KEY] = True
+        PERF_JSON.parent.mkdir(parents=True, exist_ok=True)
         PERF_JSON.write_text(json.dumps(data, indent=4) + "\n")
         return f"Updated {PERF_JSON}."
 

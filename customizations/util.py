@@ -29,6 +29,13 @@ def is_hyprland_active() -> bool:
     return shutil.which("hyprctl") is not None
 
 
+def is_ryoku_installed() -> bool:
+    """Ryoku's own config files (e.g. performance.json) are only written once the
+    user touches the corresponding setting in Ryoku Settings/Hub, so their absence
+    doesn't mean Ryoku isn't installed -- check for the CLI binary instead."""
+    return shutil.which("ryoku") is not None
+
+
 def hyprctl_int_option(option: str) -> int | None:
     if not is_hyprland_active():
         return None
